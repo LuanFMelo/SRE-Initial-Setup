@@ -226,6 +226,7 @@ install_github_cli() {
           apt_update && apt_install gh
           ;;
         dnf|yum)
+          dnf_install dnf-plugins-core
           sudo "$PKG_MANAGER" config-manager --add-repo \
             https://cli.github.com/packages/rpm/gh-cli.repo
           dnf_install gh
@@ -1205,6 +1206,52 @@ EOF
   log_success "VirtualBox installed."
 }
 
+# ── VirtualBox Extension Pack ────────────────────────────────────────────────
+install_virtualbox_extension_pack() {
+  log_section "VirtualBox Extension Pack"
+
+  if ! command_exists VBoxManage; then
+    log_warn "VBoxManage not found — skipping Extension Pack installation."
+    return
+  fi
+
+  local vbox_version vbox_extpack_url tmp_dir extpack_file
+  vbox_version=$(VBoxManage --version | sed -E 's/r.*//' | sed -E 's/_.*//')
+
+  # Skip when the matching Extension Pack version is already installed.
+  if VBoxManage list extpacks 2>/dev/null | grep -q "Oracle VM VirtualBox Extension Pack" && \
+     VBoxManage list extpacks 2>/dev/null | grep -q "Version: *${vbox_version}"; then
+    log_success "VirtualBox Extension Pack ${vbox_version} already installed."
+    return
+  fi
+
+  if ! command_exists curl; then
+    case "$OS" in
+      macos) brew install curl ;;
+      linux)
+        case "$PKG_MANAGER" in
+          apt) apt_install curl ;;
+          dnf|yum) dnf_install curl ;;
+        esac
+        ;;
+    esac
+  fi
+
+  vbox_extpack_url="https://download.virtualbox.org/virtualbox/${vbox_version}/Oracle_VM_VirtualBox_Extension_Pack-${vbox_version}.vbox-extpack"
+  tmp_dir=$(mktemp -d)
+  extpack_file="$tmp_dir/Oracle_VM_VirtualBox_Extension_Pack-${vbox_version}.vbox-extpack"
+
+  log_info "Downloading VirtualBox Extension Pack ${vbox_version}..."
+  curl -fsSL "$vbox_extpack_url" -o "$extpack_file"
+
+  log_info "Installing VirtualBox Extension Pack..."
+  require_sudo
+  yes | sudo VBoxManage extpack install --replace "$extpack_file" >/dev/null
+  rm -rf "$tmp_dir"
+
+  log_success "VirtualBox Extension Pack installed."
+}
+
 print_summary() {
   log_section "Installation Summary"
   local tools=(brew git gh ansible tfenv terraform pipenv kubectl kubectx kubens az code spotify teamviewer py-spy claude docker docker-compose bitwarden vim VBoxManage)
@@ -1285,6 +1332,7 @@ main() {
   install_bitwarden
   install_vim
   install_virtualbox
+  install_virtualbox_extension_pack
   configure_zsh_completions
   run_post_install_maintenance
 
