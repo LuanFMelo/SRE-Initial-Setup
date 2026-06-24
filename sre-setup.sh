@@ -1334,13 +1334,12 @@ countdown_reboot() {
   echo -e "\n${NC}"
   
   log_info "Rebooting now..."
-  # Schedule reboot in 1 minute to avoid sudo expiry during countdown
   case "$OS" in
     macos) 
-      sudo shutdown -r +1 "System will reboot in 1 minute"
+      sudo reboot
       ;;
     linux)
-      sudo shutdown -r +1 "System will reboot in 1 minute"
+      sudo reboot
       ;;
   esac
 }
