@@ -45,7 +45,7 @@ cleanup_sudo() {
   [[ -n "${SUDO_BG_PID:-}" ]] && kill "$SUDO_BG_PID" 2>/dev/null || true
 }
 
-trap cleanup_sudo EXIT
+trap cleanup_sudo EXIT INT TERM
 
 # ── OS Detection ──────────────────────────────────────────────────────────────
 detect_os() {
@@ -1135,6 +1135,52 @@ install_slack() {
   log_success "Slack installed."
 }
 
+enable_slack_autostart() {
+  log_section "Slack Autostart"
+  case "$OS" in
+    macos)
+      log_info "Adding Slack to Login Items..."
+      # Use osascript to add to Login Items
+      osascript <<EOF
+tell application "System Events"
+  make login item at end with properties {path:"/Applications/Slack.app", hidden:false}
+end tell
+EOF
+      log_success "Slack will start on system boot."
+      ;;
+    linux)
+      local autostart_dir="$HOME/.config/autostart"
+      mkdir -p "$autostart_dir"
+      
+      if command_exists snap; then
+        cat > "$autostart_dir/slack.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Slack
+Exec=snap run slack
+Icon=slack
+Terminal=false
+X-GNOME-Autostart-enabled=true
+EOF
+      elif command_exists flatpak; then
+        cat > "$autostart_dir/slack.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Slack
+Exec=flatpak run com.slack.Slack
+Icon=slack
+Terminal=false
+X-GNOME-Autostart-enabled=true
+EOF
+      else
+        log_warn "Slack autostart requires snap or flatpak on Linux."
+        return
+      fi
+      log_success "Slack will start on system boot."
+      ;;
+  esac
+}
+
 # ── Bitwarden (GUARANTEED INSTALLATION) ──────────────────────────────────────
 install_bitwarden() {
   log_section "Bitwarden"
@@ -1191,7 +1237,7 @@ install_vim() {
 
 print_summary() {
   log_section "Installation Summary"
-  local tools=(brew git gh ansible tfenv terraform pipenv kubectl kubectx kubens az code spotify teamviewer azure-cli claude docker docker-compose bitwarden vim)
+  local tools=(brew git gh ansible tfenv terraform pipenv kubectl kubectx kubens az code docker-compose vim)
   local linux_tools=(openssl dig wget telnet zsh remmina microsoft-edge-stable slack)
 
   for tool in "${tools[@]}"; do
@@ -1232,10 +1278,6 @@ print_summary() {
       case "$tool" in
         spotify) echo -e "  ${YELLOW}⊘${NC} $tool — Skipped (not available in all regions/systems)" ;;
         teamviewer) echo -e "  ${YELLOW}⊘${NC} $tool — Skipped (manual download recommended)" ;;
-        azure-cli) echo -e "  ${YELLOW}⊘${NC} $tool — Skipped (installation may have failed)" ;;
-        claude) echo -e "  ${YELLOW}⊘${NC} $tool — Skipped (macOS only or already installed)" ;;
-        docker) echo -e "  ${YELLOW}⊘${NC} $tool — Skipped (requires Docker Desktop/Colima)" ;;
-        bitwarden) echo -e "  ${YELLOW}⊘${NC} $tool — Skipped (installation may have failed)" ;;
         *) echo -e "  ${YELLOW}⊘${NC} $tool — Skipped or failed" ;;
       esac
     done
@@ -1250,9 +1292,10 @@ print_summary() {
 # ── Reboot prompt with countdown ──────────────────────────────────────────────
 prompt_reboot() {
   log_section "System Reboot"
-  read -p "Reboot system now? (y/n): " -r reboot_choice
+  read -p "Reboot system now? (Y/n - default yes): " -r reboot_choice
   
-  if [[ "$reboot_choice" =~ ^[Yy]$ ]]; then
+  # Default to YES if empty or matches [Yy]
+  if [[ -z "$reboot_choice" || "$reboot_choice" =~ ^[Yy]$ ]]; then
     countdown_reboot
   else
     log_info "Skipped reboot. You can restart later manually."
@@ -1270,10 +1313,8 @@ countdown_reboot() {
   echo -e "\n${NC}"
   
   log_info "Rebooting now..."
-  case "$OS" in
-    macos) sudo shutdown -r now ;;
-    linux) sudo shutdown -r now ;;
-  esac
+  # Use sudo -n (non-interactive) since we validated sudo at start
+  sudo -n shutdown -r now 2>/dev/null || sudo shutdown -r now
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1320,6 +1361,7 @@ main() {
   install_docker_compose
   install_edge
   install_slack
+  enable_slack_autostart
   install_bitwarden
   install_vim
   configure_zsh_completions
