@@ -35,8 +35,8 @@ validate_sudo_once() {
   if [[ "$EUID" -ne 0 ]]; then
     log_info "Validating sudo privileges (one-time)..."
     sudo -v
-    # Keep sudo timestamp fresh in background
-    ( while true; do sudo -n true; sleep 60; kill -0 "$$" 2>/dev/null || exit; done ) &
+    # Keep sudo timestamp fresh - refresh every 30 seconds until script ends
+    ( while true; do sudo -n true; sleep 30; kill -0 "$$" 2>/dev/null || exit; done ) &
     SUDO_BG_PID=$!
   fi
 }
@@ -1313,8 +1313,16 @@ countdown_reboot() {
   echo -e "\n${NC}"
   
   log_info "Rebooting now..."
-  # Use sudo -n (non-interactive) since we validated sudo at start
-  sudo -n shutdown -r now 2>/dev/null || sudo shutdown -r now
+  # Refresh sudo timestamp first, then reboot
+  sudo -v 2>/dev/null || true
+  case "$OS" in
+    macos) 
+      sudo shutdown -r now
+      ;;
+    linux)
+      sudo shutdown -r now
+      ;;
+  esac
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
