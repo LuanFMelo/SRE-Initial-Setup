@@ -1139,14 +1139,44 @@ enable_slack_autostart() {
   log_section "Slack Autostart"
   case "$OS" in
     macos)
+      # Check if Slack app exists
+      if [[ ! -d "/Applications/Slack.app" ]]; then
+        log_warn "Slack.app not found in /Applications"
+        return
+      fi
+      
       log_info "Adding Slack to Login Items..."
-      # Use osascript to add to Login Items
-      osascript <<EOF
-tell application "System Events"
-  make login item at end with properties {path:"/Applications/Slack.app", hidden:false}
-end tell
+      # Method 1: Try osascript
+      osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/Slack.app"}' 2>/dev/null && {
+        log_success "Slack added to Login Items (osascript)"
+        return
+      }
+      
+      # Method 2: Use LaunchAgent (more reliable)
+      local launchagent_dir="$HOME/Library/LaunchAgents"
+      mkdir -p "$launchagent_dir"
+      
+      cat > "$launchagent_dir/com.slack.autostart.plist" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.slack.autostart</string>
+    <key>Program</key>
+    <string>/Applications/Slack.app/Contents/MacOS/Slack</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/dev/null</string>
+    <key>StandardErrorPath</key>
+    <string>/dev/null</string>
+</dict>
+</plist>
 EOF
-      log_success "Slack will start on system boot."
+      
+      launchctl load "$launchagent_dir/com.slack.autostart.plist" 2>/dev/null || true
+      log_success "Slack will start on system boot (LaunchAgent)."
       ;;
     linux)
       local autostart_dir="$HOME/.config/autostart"
