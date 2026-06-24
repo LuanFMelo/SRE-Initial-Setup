@@ -33,19 +33,10 @@ command_exists() { command -v "$1" &>/dev/null; }
 # ── Sudoers validation (one-time, keeps timestamp fresh) ────────────────────
 validate_sudo_once() {
   if [[ "$EUID" -ne 0 ]]; then
-    log_info "Validating sudo privileges (one-time)..."
+    log_info "Validating sudo privileges..."
     sudo -v
-    # Keep sudo timestamp fresh - refresh every 30 seconds until script ends
-    ( while true; do sudo -n true; sleep 30; kill -0 "$$" 2>/dev/null || exit; done ) &
-    SUDO_BG_PID=$!
   fi
 }
-
-cleanup_sudo() {
-  [[ -n "${SUDO_BG_PID:-}" ]] && kill "$SUDO_BG_PID" 2>/dev/null || true
-}
-
-trap cleanup_sudo EXIT INT TERM
 
 # ── OS Detection ──────────────────────────────────────────────────────────────
 detect_os() {
@@ -1343,14 +1334,13 @@ countdown_reboot() {
   echo -e "\n${NC}"
   
   log_info "Rebooting now..."
-  # Refresh sudo timestamp first, then reboot
-  sudo -v 2>/dev/null || true
+  # Schedule reboot in 1 minute to avoid sudo expiry during countdown
   case "$OS" in
     macos) 
-      sudo shutdown -r now
+      sudo shutdown -r +1 "System will reboot in 1 minute"
       ;;
     linux)
-      sudo shutdown -r now
+      sudo shutdown -r +1 "System will reboot in 1 minute"
       ;;
   esac
 }
