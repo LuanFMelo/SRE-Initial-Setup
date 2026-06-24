@@ -546,10 +546,40 @@ install_vscode_extensions() {
     eamodio.gitlens
     mhutchie.git-graph
   )
+  
+  # Get list of installed extensions (lowercase for comparison)
+  local installed_extensions
+  installed_extensions=$("$CODE_BIN" --list-extensions 2>/dev/null | tr '[:upper:]' '[:lower:]')
+  
   for ext in "${extensions[@]}"; do
-    "$CODE_BIN" --install-extension "$ext" 2>/dev/null || true
+    local ext_lower=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+    
+    # Check if already installed
+    if echo "$installed_extensions" | grep -qi "^${ext_lower}$"; then
+      log_success "✓ $ext (already installed)"
+    else
+      log_info "Installing $ext..."
+      "$CODE_BIN" --install-extension "$ext" 2>/dev/null && {
+        log_success "✓ $ext installed"
+      } || {
+        log_warn "✗ $ext installation failed"
+      }
+    fi
   done
-  log_success "VS Code extensions installed."
+  
+  log_success "VS Code extensions configured."
+}
+
+set_default_browser_manual() {
+  log_section "Default Browser (Manual)"
+  log_info "macOS requires user confirmation for default browser."
+  log_info ""
+  log_info "To set Microsoft Edge as default:"
+  log_info "  1. Open System Settings"
+  log_info "  2. General → Default web browser"
+  log_info "  3. Select 'Microsoft Edge'"
+  log_info ""
+  log_info "Or simply click any link - macOS will prompt you."
 }
 
 configure_vscode_extensions() {
@@ -1065,9 +1095,6 @@ install_edge() {
   case "$OS" in
     macos)
       brew install --cask microsoft-edge 2>/dev/null || true
-      if command_exists defaultbrowser; then
-        defaultbrowser edge 2>/dev/null || true
-      fi
       log_success "Microsoft Edge installed."
       ;;
     linux)
@@ -1091,11 +1118,12 @@ EOF
           dnf_install microsoft-edge-stable
           ;;
       esac
-      command_exists xdg-settings && xdg-settings set default-web-browser microsoft-edge.desktop 2>/dev/null || true
       log_success "Microsoft Edge installed."
       ;;
   esac
 }
+
+
 
 install_slack() {
   log_section "Slack"
@@ -1387,12 +1415,14 @@ main() {
   install_docker
   install_docker_compose
   install_edge
+  # set_default_browser  # Requires Accessibility permissions - user can set manually
   install_slack
   enable_slack_autostart
   install_bitwarden
   install_vim
   configure_zsh_completions
   run_post_install_maintenance
+  [[ "$OS" == "macos" ]] && set_default_browser_manual
 
   print_summary
   prompt_reboot
