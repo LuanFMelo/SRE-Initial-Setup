@@ -1,6 +1,8 @@
 # SRE Initial Setup
 
-Bootstrap script for macOS, Ubuntu, and Fedora developer machines.
+Bootstrap script for macOS, Ubuntu, and Fedora developer/SRE machines.
+
+> For AI assistant context and editing guidelines, see [claude.md](claude.md).
 
 ## Supported Operating Systems
 
@@ -86,3 +88,7 @@ chmod +x ./sre-setup.sh
 - The script is intentionally scoped to macOS, Ubuntu, and Fedora.
 - Some tools may still require login/auth steps after install (for example gh, Azure CLI, Bitwarden).
 - Open a new terminal session after completion to ensure PATH and shell changes are loaded.
+
+## Contributing / AI Assistance
+
+When using an AI assistant (e.g. Claude) to edit this repository, refer to [claude.md](claude.md) for project conventions, tool inventory, and editing guidelines.
