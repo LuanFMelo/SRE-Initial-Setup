@@ -6,77 +6,99 @@ Bootstrap script for macOS, Ubuntu, and Fedora developer/SRE machines.
 
 ## Supported Operating Systems
 
-- macOS
-- Ubuntu
-- Fedora
+| OS | Package Manager |
+|---|---|
+| macOS | Homebrew |
+| Ubuntu | apt |
+| Fedora | dnf |
 
 ## What This Script Does
 
-The script in [sre-setup.sh](sre-setup.sh) automates:
+The script [sre-setup.sh](sre-setup.sh) runs fully non-interactive and automates:
 
-- OS detection and platform banner output
-- Package updates before installation
-- Installation/configuration of common SRE tools
-- Zsh/Oh My Zsh setup and shell completions
-- Package updates and cleanup after installation
-- Final install summary
+1. OS and distro detection
+2. Sudo validation (one-time at startup)
+3. System locale set to `en_US.UTF-8`
+4. Pre-install package updates
+5. Installation and configuration of all SRE tools (see below)
+6. Zsh / Oh My Zsh setup with completions (Linux)
+7. Post-install update and cleanup
+8. Final installation summary with elapsed time
+9. Optional system reboot with countdown
 
 ## Installed Tools
 
-Primary tools configured by the script include:
+| Tool | macOS | Ubuntu | Fedora |
+|---|---|---|---|
+| Git | brew | apt | dnf |
+| GitHub CLI (`gh`) | brew | apt (keyring repo) | dnf (gh repo) |
+| Ansible | brew | apt (PPA) | dnf |
+| tfenv + Terraform | brew | git clone | git clone |
+| pipenv | brew | pip / pipx | pip / pipx |
+| kubectl | brew | apt (k8s repo) | dnf (k8s repo) |
+| kubectx + kubens | brew | GitHub release binary | GitHub release binary |
+| Visual Studio Code | brew cask | apt (MS repo) | dnf (MS repo) |
+| Azure CLI | brew | apt (MS repo) | dnf (MS repo) |
+| Docker + Compose v2 | brew cask | apt (Docker repo) | dnf (Docker repo) |
+| Microsoft Edge | brew cask | apt (MS repo) | dnf (MS repo) |
+| Claude Desktop | brew cask | _(web only)_ | _(web only)_ |
+| Slack | brew cask | snap | snap / flatpak |
+| Bitwarden | brew cask | snap / .deb | .rpm |
+| TeamViewer | brew cask | .deb download | .rpm download |
+| Remote Desktop | Windows App (brew) | Remmina (apt) | Remmina (dnf) |
+| Spotify | brew cask | apt (Spotify repo) | snap / flatpak |
+| Vim | brew | apt | dnf |
+| Python debug tools | pip (user) | pip (user) | pip (user) |
+| Linux system utils | — | apt | dnf |
 
-- Git
-- GitHub CLI (gh)
-- Ansible
-- tfenv + Terraform
-- pipenv
-- kubectl
-- kubectx + kubens
-- Visual Studio Code
-- VS Code extensions (predefined list)
-- Spotify
-- TeamViewer
-- Azure CLI
-- Remote Desktop tools
-- Python debugging tools (debugpy, ipdb, pdbpp, rich, icecream, py-spy)
-- Claude desktop/CLI handling
-- Docker + Docker Compose
-- Microsoft Edge
-- Slack
-- Bitwarden
-- Vim
-- VirtualBox
+### Python Debug Tools
+
+Installed via `pip --user`: `debugpy`, `ipdb`, `pdbpp`, `rich`, `icecream`, `py-spy`
+
+### Linux System Utilities
+
+`openssl`, `dnsutils` / `bind-utils`, `wget`, `telnet`, `zsh`
+
+## VS Code Configuration
+
+Beyond installing VS Code, the script also:
+
+- **Installs extensions:** `anthropic.claude-code`, `PKief.material-icon-theme`, `azemoh.one-monokai`, `ms-vscode.powershell`, `ms-python.python`, `eamodio.gitlens`, `mhutchie.git-graph`
+- **Writes `settings.json`** with icon theme, Git Graph, and formatter settings
+- **Creates `~/Documents/projects.code-workspace`** with full workspace settings for all installed extensions
+
+## Git & SSH Setup
+
+- Prompts for name and email to configure `git config --global` (only if not already set)
+- Generates an `ed25519` SSH key at `~/.ssh/id_ed25519` (skips if already present)
+- Configures `~/.ssh/config` for `github.com`
+- Uploads the public key to GitHub via `gh ssh-key add` (requires `gh auth login`)
 
 ## Shell Behavior
 
-- macOS: keeps default zsh
-- Linux: installs and configures Oh My Zsh with:
+- **macOS:** keeps default `zsh`, no changes
+- **Linux:** installs Oh My Zsh with:
   - Theme: `apple`
   - Plugins: `git docker kubectl terraform python ssh-agent`
-- Configures zsh completions for kubectl, docker, gh, and terraform when available
+  - Default shell changed to `zsh`
+- **Completions configured for:** `kubectl`, `docker`, `gh`, `terraform`
+
+Slack is configured to start automatically on login (LaunchAgent on macOS, `.desktop` autostart on Linux).
 
 ## Package Maintenance
 
-The script performs maintenance in two phases:
-
-1. Pre-install update
-   - macOS: `brew update && brew upgrade`
-   - Ubuntu: `apt update && apt upgrade`
-   - Fedora: `dnf upgrade --refresh`
-2. Post-install update and cleanup
-   - macOS: `brew update && brew upgrade && brew cleanup -s`
-   - Ubuntu: `apt upgrade`, `autoremove`, `autoclean`, `clean`
-   - Fedora: `dnf upgrade --refresh`, `autoremove`, `clean all`
+| Phase | macOS | Ubuntu | Fedora |
+|---|---|---|---|
+| Pre-install | `brew update && brew upgrade` | `apt update && apt upgrade` | `dnf upgrade --refresh` |
+| Post-install | `brew update && brew upgrade && brew cleanup -s` | `apt upgrade`, `autoremove`, `autoclean`, `clean` | `dnf upgrade --refresh`, `autoremove`, `clean all` |
 
 ## Requirements
 
 - Internet access
-- `sudo` privileges for package installation and system changes
+- `sudo` privileges
 - Bash shell
 
 ## Usage
-
-Run from the repository root:
 
 ```bash
 chmod +x ./sre-setup.sh
@@ -86,8 +108,9 @@ chmod +x ./sre-setup.sh
 ## Notes
 
 - The script is intentionally scoped to macOS, Ubuntu, and Fedora.
-- Some tools may still require login/auth steps after install (for example gh, Azure CLI, Bitwarden).
-- Open a new terminal session after completion to ensure PATH and shell changes are loaded.
+- Some tools require manual auth after install: `gh auth login`, `az login`, Bitwarden vault unlock.
+- Open a new terminal after completion to reload PATH and shell changes.
+- On macOS, setting Microsoft Edge as the default browser must be done manually via System Settings → General → Default web browser.
 
 ## Contributing / AI Assistance
 
